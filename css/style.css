@@ -189,15 +189,15 @@ body,
     font-size: 16px;
 }
 
-.journey__search {
+.marker__labels__holder {
     position: relative;
 }
 
-.autocomplete__form .autocomplete__results {
+.autocomplete__results {
     position: absolute;
     top: 2rem;
     left: 0;
-    z-index: 100;
+    z-index: 1020;
     background: var(--primary-background);
     padding: 0;
     list-style-type: none;
@@ -205,6 +205,28 @@ body,
     box-shadow: 0px 0px 10px rgb(198 198 198 / 50%);
     border-radius: 10px;
     overflow: hidden;
+    display: none;
+}
+
+.autocomplete__results.open {
+    display: block;
+}
+
+.autocomplete__results li {
+    padding: 10px 20px;
+    font-size: 12px;
+    line-height: 1;
+    transition: .3s ease all;
+    cursor: pointer;
+}
+
+.autocomplete__results li:hover {
+    background: rebeccapurple;
+    color: var(--primary-background);
+}
+
+.autocomplete__results li.not-result {
+    pointer-events: none;
 }
 
 .markers__list__holder {
@@ -540,7 +562,11 @@ body,
         max-width: 100%;
         height: auto;
         max-height: none;
-        position: static;
+        position: relative;
+        top: auto;
+        left: auto;
+        right: auto;
+        bottom: auto;
         background-color: var(--primary-background);
         transform: none;
         margin: 0;

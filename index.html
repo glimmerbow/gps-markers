@@ -26,15 +26,24 @@
 <body>
     <div class="map__marker__add">
         <button type="button" class="map__locate">🔍</button>
-        <button type="button" class="map__set__marker">MARK</button>
-        <input type="text" name="marker_label" class="map__marker__label" />
+        <button type="button" class="map__set__marker">Marquer</button>
+        <button type="button" class="map__clear__markers">Supprimer les marqueurs</button>
+        <div class="marker__labels__holder">
+            <input type="text" name="marker_label" class="map__marker__label" />
+            <ul class="autocomplete__results">
+                <li>Voiture</li>
+                <li>Maison</li>
+                <li>Travail</li>
+            </ul>
+        </div>
     </div>
+    <div id="map"></div>
     <div class="markers__list__holder">
         <ul class="markers__list"></ul>
         <button type="button" class="markers__list__toggle">&lt;</button>
     </div>
-    <div id="map"></div>
     <button type="button" class="color__toggle">🌙</button>
+    <div class="loader"></div>
 </body>
 
 </html>

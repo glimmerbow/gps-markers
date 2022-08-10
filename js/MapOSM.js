@@ -2,13 +2,27 @@ class MapOSM {
     constructor() {
         this.map;
 
+        this.localStorageKey = "userMarkers";
+
         this.locator = document.querySelector(".map__locate");
         this.setMarkerButton = document.querySelector(".map__set__marker");
+        this.clearMarkersButton = document.querySelector(
+            ".map__clear__markers"
+        );
         this.markerLabelInput = document.querySelector(".map__marker__label");
+        this.markerLabelAutocomplete = document.querySelector(
+            ".autocomplete__results"
+        );
         this.markersList = document.querySelector(".markers__list");
+
+        this.locationAllowed =
+            localStorage.getItem("locationAllowed") === "true";
+
+        this.loader = new MiniLoader(document.querySelector(".loader"));
 
         this.initMap();
         this.eventHandlers();
+        this.setUserMarkers();
     }
 
     initMap() {
@@ -17,6 +31,7 @@ class MapOSM {
             maxZoom: 19,
             attribution: "© OpenStreetMap",
             className: "map-tiles",
+            scrollWheelZoom: "center",
         }).addTo(this.map);
 
         this.map.zoomControl.remove();
@@ -27,15 +42,15 @@ class MapOSM {
             })
             .addTo(this.map);
 
-        this.markerIcon = L.icon({
-            iconUrl: "images/marker.png",
+        // this.markerIcon = L.icon({
+        //     iconUrl: "images/marker.png",
 
-            iconSize: [32, 32], // size of the icon
+        //     iconSize: [32, 32], // size of the icon
 
-            iconAnchor: [16, 16], // point of the icon which will correspond to marker's location
-            // shadowAnchor: [4, 62], // the same for the shadow
-            // popupAnchor: [-3, -76], // point from which the popup should open relative to the iconAnchor
-        });
+        //     iconAnchor: [16, 16], // point of the icon which will correspond to marker's location
+        //     // shadowAnchor: [4, 62], // the same for the shadow
+        //     // popupAnchor: [-3, -76], // point from which the popup should open relative to the iconAnchor
+        // });
 
         this.map.on("locationerror", this.onLocationError.bind(this));
         this.map.on("locationfound", this.onLocationFound.bind(this));
@@ -63,8 +78,32 @@ class MapOSM {
             });
         }
 
+        if (this.clearMarkersButton) {
+            this.clearMarkersButton.addEventListener("click", (e) => {
+                e.preventDefault();
+
+                this.clearAllMarkers();
+            });
+        }
+        if (this.markerLabelInput && this.markerLabelAutocomplete) {
+            this.markerLabelInput.addEventListener("click", (e) => {
+                this.markerLabelAutocomplete.classList.add("open");
+            });
+
+            const lis = this.markerLabelAutocomplete.querySelectorAll("li");
+
+            if (lis.length > 0) {
+                lis.forEach((li) => {
+                    li.addEventListener("click", (e) => {
+                        this.markerLabelAutocomplete.classList.remove("open");
+                        this.markerLabelInput.value = e.target.textContent;
+                        this.markerLabelInput.focus();
+                    });
+                });
+            }
+        }
         window.addEventListener("keydown", (e) => {
-            if (e.key == "t") {
+            if (e.key == "$") {
                 this.setMarkerOnUserPosition();
                 this.updateMarkersList();
             }
@@ -82,17 +121,42 @@ class MapOSM {
                 });
             }
         });
+
+        if (this.locationAllowed) {
+            this.setUserLocation();
+        }
+    }
+
+    clearAllMarkers() {
+        localStorage.removeItem(this.localStorageKey);
+        this.currentMarkers = [];
+        this.currentMarkersData = [];
+
+        this.clearMarkersList();
+        this.resetMap();
+    }
+
+    setUserMarkers() {
+        this.getMarkersStorage();
+
+        if (window.window.currentMarkersData.length > 0) {
+            window.window.currentMarkersData.forEach((marker) => {
+                this.addMarker(marker.coord, marker.index, marker.tooltip);
+            });
+        }
+
+        this.updateMarkersList();
     }
 
     setUserLocation() {
+        this.loader.add();
         this.map.locate({ setView: true, maxZoom: 16 });
     }
 
     addMarker(coord, index, tooltip = "") {
         if (coord) {
-            console.log(coord);
             let marker = L.marker([coord.lat, coord.lng], {
-                icon: this.markerIcon,
+                // icon: this.markerIcon,
             });
 
             if (tooltip) {
@@ -105,12 +169,22 @@ class MapOSM {
 
             marker.addTo(this.map);
 
+            // For map
             window.currentMarkers.push(marker);
+            // For data storing
+            window.currentMarkersData.push({
+                coord: coord,
+                index: index,
+                tooltip: tooltip,
+            });
+
+            this.updateMarkersStorage();
         }
     }
 
     onLocationError(e) {
         alert(e.message);
+        this.loader.remove();
     }
 
     onLocationFound(e) {
@@ -119,12 +193,12 @@ class MapOSM {
         this.updateUserLocation(e);
         this.map.flyTo(window.userLocation, 12);
 
-        // L.marker(e.latlng)
-        //     .addTo(this.map)
-        //     .bindPopup("You are within " + radius + " meters from this point")
-        //     .openPopup();
+        if (!this.locationAllowed) {
+            this.locationAllowed = true;
+            localStorage.setItem("locationAllowed", true);
+        }
 
-        // L.circle(e.latlng, radius).addTo(this.map);
+        this.loader.remove();
     }
 
     updateUserLocation(e) {
@@ -134,12 +208,12 @@ class MapOSM {
     getCurrentPosition() {
         let currentPosition = this.map.getCenter();
 
-        if (
-            window.userLocation &&
-            Object.keys(window.userLocation).length > 0
-        ) {
-            currentPosition = window.userLocation;
-        }
+        // if (
+        //     window.userLocation &&
+        //     Object.keys(window.userLocation).length > 0
+        // ) {
+        //     currentPosition = window.userLocation;
+        // }
 
         return currentPosition;
     }
@@ -156,10 +230,10 @@ class MapOSM {
         if (window.currentMarkers.length > 0) {
             this.clearMarkersList();
 
-            window.currentMarkers.forEach((marker) => {
-                console.log(marker);
+            window.currentMarkers.forEach((marker, index) => {
                 let li = document.createElement("li");
-                let coord = document.createElement("strong");
+                let coord = document.createElement("small");
+                let tooltipContent = document.createElement("strong");
 
                 const latLng = marker.getLatLng();
                 const tooltip = marker.getTooltip();
@@ -167,14 +241,14 @@ class MapOSM {
                 li.setAttribute("lat", latLng.lat);
                 li.setAttribute("lng", latLng.lng);
 
-                coord.textContent = latLng.lat + ";" + latLng.lng;
-                li.appendChild(coord);
+                tooltipContent.innerHTML = tooltip
+                    ? tooltip.getContent()
+                    : "Marqueur " + (index + 1);
 
-                if (tooltip) {
-                    let tooltipContent = document.createElement("p");
-                    tooltipContent.innerHTML = tooltip.getContent();
-                    li.appendChild(tooltipContent);
-                }
+                coord.textContent = latLng.lat + ";" + latLng.lng;
+
+                li.appendChild(tooltipContent);
+                li.appendChild(coord);
 
                 this.markersList.appendChild(li);
             });
@@ -202,5 +276,20 @@ class MapOSM {
             // geocoder: L.Control.Geocoder.nominatim(),
         });
         this.routing.addTo(this.map);
+    }
+
+    getMarkersStorage() {
+        const markers = localStorage.getItem(this.localStorageKey);
+
+        if (markers) {
+            window.window.currentMarkersData = JSON.parse(markers);
+        }
+    }
+
+    updateMarkersStorage() {
+        localStorage.setItem(
+            this.localStorageKey,
+            JSON.stringify(window.currentMarkersData)
+        );
     }
 }
