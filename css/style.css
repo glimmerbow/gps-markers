@@ -602,4 +602,8 @@ body,
     .loader {
         background-size: 25vw;
     }
+
+    .leaflet-routing-container {
+        display: none;
+    }
 }
